@@ -10,11 +10,11 @@ pub async fn get_by_id_if_exists(pool: &Pool, poke_id: String) -> Result<Vec<Str
 
     web::block(move || {
         let mut statement = conn.prepare(
-            &("SELECT name FROM names WHERE poke_id = ".to_owned() + &poke_id),
+            &("SELECT name FROM names WHERE poke_id = ?"),
         )?;
 
         statement
-            .query_map([], |row| {
+            .query_map([poke_id], |row| {
                 Ok(row.get(0)?)
             }).and_then(Iterator::collect)
     })
