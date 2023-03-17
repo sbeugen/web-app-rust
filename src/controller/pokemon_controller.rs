@@ -14,28 +14,25 @@ struct Pokemon {
 #[get("/pokemon/{poke_id}")]
 pub async fn get_pokemon_by_id(db: web::Data<Pool>, poke_id: web::Path<String>) -> impl Responder {
     let result = pokemon_repository::get_by_id_if_exists(&db, poke_id.to_string()).await;
-    let result = match result {
-        Ok(names) => names,
-        Err(_) => vec![],
-    };
+    let result = result.ok().flatten();
 
-    if result.len() > 0 {
-        HttpResponse::Ok().body(result.get(0).unwrap().to_owned())
-    } else {
-        // fetch pokemon
-        let pokemon_response = fetch_pokemon_for_id(poke_id.as_str()).await;
+    match result {
+        Some(name) => HttpResponse::Ok().body(name),
+        None => {
+            let pokemon_response = fetch_pokemon_for_id(poke_id.as_str()).await;
 
-        match pokemon_response {
-            Ok(pokemon) => {
-                let _store_result = pokemon_repository::add_cache_entry(
-                    &db,
-                    pokemon.name.clone(),
-                    pokemon.id.to_string(),
-                )
-                .await;
-                HttpResponse::Ok().body(pokemon.name)
+            match pokemon_response {
+                Ok(pokemon) => {
+                    let _store_result = pokemon_repository::add_cache_entry(
+                        &db,
+                        pokemon.name.clone(),
+                        pokemon.id.to_string(),
+                    )
+                    .await;
+                    HttpResponse::Ok().body(pokemon.name)
+                }
+                Err(_) => HttpResponse::InternalServerError().body("Error"),
             }
-            Err(_) => HttpResponse::InternalServerError().body("Error"),
         }
     }
 }
